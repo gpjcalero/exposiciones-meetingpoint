@@ -14,9 +14,24 @@ export async function onRequestPost(context) {
 
   const dataUrl = `data:${mime_type || 'image/jpeg'};base64,${image_base64}`;
 
-  const prompt = mode === 'name'
-    ? 'Look at this image of a showroom ambiente/box label. Extract the name or identifier of the ambiente (e.g. "BOX 1", "COULOIR", "HALL", "SALLE DE BAIN", etc.). Return ONLY the name as a plain string, nothing else. If you cannot determine a name, return an empty string.'
-    : 'Look at this image of product labels or showroom display tags. Extract ALL SAP codes visible in the image. SAP codes are numeric codes, typically 6-10 digits long (e.g. 100336896, 1222347). Return ONLY a valid JSON array of the SAP code strings found, with no explanation. Example output: ["100336896","100412347"]. If no SAP codes are visible, return: []';
+  let prompt;
+  if (mode === 'name') {
+    prompt = `This is a Porcelanosa showroom ambiente/box label. Near the top it shows the ambiente name such as "AMBIENTE 8 PORCELANOSA", "AMBIENTE 3", "BOX 1", "COULOIR", etc.
+Extract ONLY the ambiente name or identifier shown on this label.
+Return ONLY the name as plain text, nothing else. Example: "AMBIENTE 8 PORCELANOSA"
+If you cannot read a clear name, return an empty string.`;
+  } else {
+    prompt = `This is a Porcelanosa product label (etiqueta de ambiente) listing products with their codes.
+The label contains numeric product codes that are exactly 9 digits long, always starting with "100" followed by 6 more digits (e.g. 100562400, 100570014, 100416031, 100419471).
+These codes appear at the START of each product line, before the product description.
+There can be 5 to 30 codes in a single label, organized in sections like "Revestimiento" and "Pavimento".
+
+Your task: read the label carefully and extract EVERY 9-digit numeric code that starts with 100.
+Return ONLY a valid JSON array of strings with ALL the codes you find.
+Example: ["100562400","100570014","100416031","100419471","100552499"]
+If no codes found, return: []
+Do not include any explanation, only the JSON array.`;
+  }
 
   const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -26,7 +41,7 @@ export async function onRequestPost(context) {
     },
     body: JSON.stringify({
       model: 'google/gemini-flash-1.5',
-      max_tokens: 512,
+      max_tokens: 1024,
       messages: [{
         role: 'user',
         content: [
@@ -46,24 +61,31 @@ export async function onRequestPost(context) {
   if (!response.ok) {
     const errText = await response.text();
     console.error('OpenRouter API error:', errText);
-    return Response.json({ sap_codes: [], error: 'AI analysis failed' }, { status: 500 });
+    return Response.json({ sap_codes: [], error: 'AI analysis failed: ' + errText }, { status: 500 });
   }
 
   const data = await response.json();
   const text = (data.choices?.[0]?.message?.content || '').trim();
 
-  // Name mode: return the detected name
   if (mode === 'name') {
     return Response.json({ name: text });
   }
 
-  // SAP mode: parse JSON array from response
   let sap_codes = [];
   try {
     const match = text.match(/\[[\s\S]*\]/);
-    if (match) sap_codes = JSON.parse(match[0]);
+    if (match) {
+      sap_codes = JSON.parse(match[0]);
+    } else {
+      // Fallback: extract all 9-digit codes starting with 100 from raw text
+      const found = text.match(/\b100\d{6}\b/g);
+      if (found) sap_codes = [...new Set(found)];
+    }
   } catch (e) {
-    console.error('Parse error:', e, 'Raw text:', text);
+    // Fallback: extract codes directly from text
+    const found = text.match(/\b100\d{6}\b/g);
+    if (found) sap_codes = [...new Set(found)];
+    console.error('Parse error, used fallback. Raw text:', text);
   }
 
   return Response.json({ sap_codes });

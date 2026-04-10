@@ -910,7 +910,7 @@
       <div style="padding:0 20px 80px;display:flex;flex-direction:column;gap:10px">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
           <div class="card" style="flex-direction:column;cursor:default;text-align:center;padding:18px 8px">
-            <span style="font-size:28px;font-weight:800;color:var(--white)">${state.stores.length}</span>
+            <span style="font-size:28px;font-weight:800;color:var(--blue)">${state.stores.length}</span>
             <span style="font-size:9px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Tiendas</span>
           </div>
           <div class="card" style="flex-direction:column;cursor:default;text-align:center;padding:18px 8px">
@@ -936,10 +936,6 @@
 
         <button onclick="doExport()" style="width:100%;margin-top:14px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
           ${ICO.export} Exportar Auditoría (.xlsx)
-        </button>
-
-        <button onclick="downloadPhotosZip()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-          ${ICO.camera} Descargar fotos ambientes (.zip)
         </button>
 
         <button onclick="importCSV()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -1108,6 +1104,7 @@
     <div class="topbar">
       <button class="back-btn" onclick="go('stores')">${ICO.chevL}</button>
       <div style="flex:1;min-width:0"><h1>${store.tienda}</h1><p class="sub">${store.cliente} · ${boxes.length} ambientes</p></div>
+      <button onclick="downloadPhotosZip('${store.id}')" title="Descargar fotos" style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:8px;display:flex;align-items:center;cursor:pointer;color:var(--text2);box-shadow:0 1px 2px rgba(0,0,0,.05)">${ICO.camera}</button>
     </div>
     <div class="list">${html}</div>
     <button class="fab" onclick="showAddBox()">${ICO.plus}</button>
@@ -1152,29 +1149,25 @@
         if (!file) return;
         $('scanLabelBtn').textContent = 'Analizando...';
         $('scanLabelBtn').disabled = true;
-        const reader = new FileReader();
-        reader.onload = async ev => {
-          const base64 = ev.target.result.split(',')[1];
-          try {
-            const res = await fetch('/api/ocr', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image_base64: base64, mime_type: file.type, mode: 'name' })
-            });
-            const data = await res.json();
-            if (data.name) {
-              $('boxNameInput').value = data.name;
-              toast('Nombre detectado: ' + data.name);
-            } else {
-              toast('No se detectó nombre, escríbelo manualmente', 'info');
-            }
-          } catch (e) {
-            toast('Error al analizar la etiqueta', 'err');
+        try {
+          const { base64 } = await compressImage(file, 1600, 0.9);
+          const res = await fetch('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: base64, mime_type: 'image/jpeg', mode: 'name' })
+          });
+          const data = await res.json();
+          if (data.name) {
+            $('boxNameInput').value = data.name;
+            toast('Nombre detectado: ' + data.name);
+          } else {
+            toast('No se detectó nombre, escríbelo manualmente', 'info');
           }
-          $('scanLabelBtn').innerHTML = `${ICO.camera} Volver a fotografiar`;
-          $('scanLabelBtn').disabled = false;
-        };
-        reader.readAsDataURL(file);
+        } catch (e) {
+          toast('Error al analizar la etiqueta', 'err');
+        }
+        $('scanLabelBtn').innerHTML = `${ICO.camera} Volver a fotografiar`;
+        $('scanLabelBtn').disabled = false;
       };
 
       $('boxSaveBtn').onclick = async () => {
@@ -1417,38 +1410,54 @@
       }
     }
 
+    function compressImage(file, maxPx, quality) {
+      return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            if (w > maxPx) { h = Math.round(h * maxPx / w); w = maxPx; }
+            if (h > maxPx) { w = Math.round(w * maxPx / h); h = maxPx; }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve({ base64: dataUrl.split(',')[1], dataUrl });
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     async function handleCapture(input) {
       const file = input.files?.[0];
       if (!file) return;
       toast('Analizando imagen con IA...', 'info');
-      const reader = new FileReader();
-      reader.onload = async ev => {
-        const base64 = ev.target.result.split(',')[1];
-        const mimeType = file.type || 'image/jpeg';
-        try {
-          const res = await fetch('/api/ocr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image_base64: base64, mime_type: mimeType })
-          });
-          if (!res.ok) throw new Error('OCR error ' + res.status);
-          const data = await res.json();
-          const codes = data.sap_codes || [];
-          if (codes.length === 0) {
-            toast('No se detectaron códigos. Añade manualmente.', 'info');
-          } else {
-            const cz = $('captureZone');
-            if (cz) cz.style.display = 'none';
-            codes.forEach(sap => addManualAuditItem(String(sap)));
-            toast(`${codes.length} código${codes.length > 1 ? 's' : ''} detectado${codes.length > 1 ? 's' : ''}`);
-          }
-        } catch (err) {
-          console.error(err);
-          toast('Error en el análisis. Añade manualmente.', 'err');
+      try {
+        const { base64 } = await compressImage(file, 1600, 0.9);
+        const res = await fetch('/api/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_base64: base64, mime_type: 'image/jpeg' })
+        });
+        if (!res.ok) throw new Error('OCR error ' + res.status);
+        const data = await res.json();
+        const codes = data.sap_codes || [];
+        if (codes.length === 0) {
+          toast('No se detectaron códigos. Añade manualmente.', 'info');
+        } else {
+          const cz = $('captureZone');
+          if (cz) cz.style.display = 'none';
+          codes.forEach(sap => addManualAuditItem(String(sap)));
+          toast(`${codes.length} código${codes.length > 1 ? 's' : ''} detectado${codes.length > 1 ? 's' : ''}`);
         }
-        input.value = '';
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error(err);
+        toast('Error en el análisis. Añade manualmente.', 'err');
+      }
+      input.value = '';
     }
 
     function saveAllAudit() {
@@ -1524,17 +1533,20 @@
     }
 
     /* ── EXPORT PHOTOS ZIP ─────────────────────────────────────────── */
-    async function downloadPhotosZip() {
+    async function downloadPhotosZip(storeId) {
       const zip = new JSZip();
       let count = 0;
-      for (const store of state.stores) {
+      const targetStores = storeId
+        ? state.stores.filter(s => s.id === storeId)
+        : state.stores;
+      for (const store of targetStores) {
         const storePhotos = state.photos[store.id] || {};
         const boxes = state.ambientes[store.id] || [];
         for (const box of boxes) {
           const raw = storePhotos[box.id];
           if (!raw) continue;
           const arr = Array.isArray(raw) ? raw : [raw];
-          const safeName = `${store.tienda} - ${box.name}`.replace(/[/\\?%*:|"<>]/g, '_');
+          const safeName = `${box.name}`.replace(/[/\\?%*:|"<>]/g, '_');
           arr.forEach((photoData, pi) => {
             const base64 = photoData.split(',')[1];
             const ext = photoData.startsWith('data:image/png') ? 'png' : 'jpg';
@@ -1544,12 +1556,13 @@
           });
         }
       }
-      if (count === 0) { toast('No hay fotos de ambientes guardadas', 'err'); return; }
+      if (count === 0) { toast('No hay fotos guardadas para esta tienda', 'err'); return; }
       toast('Generando ZIP...', 'info');
+      const store = targetStores[0];
       const blob = await zip.generateAsync({ type: 'blob' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `Fotos_Ambientes_Porcelanosa_${new Date().toISOString().split('T')[0]}.zip`;
+      a.download = `Fotos_${store?.tienda || 'Ambientes'}_${new Date().toISOString().split('T')[0]}.zip`;
       a.click();
       toast(`${count} foto${count > 1 ? 's' : ''} descargada${count > 1 ? 's' : ''}`);
     }
