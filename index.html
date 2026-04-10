@@ -941,10 +941,6 @@
           ${ICO.export} Exportar Auditoría (.xlsx)
         </button>
 
-        <button onclick="doExportPDF()" style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#4F46E5,#7C3AED);border:none;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(79,70,229,.3)">
-          ${ICO.pdf} Exportar Informe Visual (.pdf)
-        </button>
-
         <button onclick="importCSV()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
           ${ICO.upload} Importar plantilla materiales (.csv)
         </button>
@@ -1524,12 +1520,18 @@
       if (!file) return;
       toast('Analizando imagen con IA...', 'info');
       try {
-        const { base64 } = await compressImage(file, 1600, 0.9);
-        const res = await fetch('/api/ocr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_base64: base64, mime_type: 'image/jpeg' })
-        });
+        const { base64 } = await compressImage(file, 1400, 0.85);
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 28000);
+        let res;
+        try {
+          res = await fetch('/api/ocr', {
+            method: 'POST',
+            signal: ctrl.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: base64, mime_type: 'image/jpeg' })
+          });
+        } finally { clearTimeout(tid); }
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'OCR error ' + res.status);
         const codes = data.sap_codes || [];
@@ -1543,8 +1545,11 @@
         }
       } catch (err) {
         console.error(err);
-        const msg = err?.message || String(err);
-        toast('Error OCR: ' + msg.slice(0, 60), 'err');
+        if (err?.name === 'AbortError') {
+          toast('OCR: tiempo agotado. Inténtalo de nuevo.', 'err');
+        } else {
+          toast('Error OCR: ' + (err?.message || String(err)).slice(0, 60), 'err');
+        }
       }
       input.value = '';
     }
@@ -1660,133 +1665,144 @@
     }
 
     /* ── EXPORT PDF ────────────────────────────────────────────────── */
+    function loadImgDims(src) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+        img.onerror = () => resolve({ w: 1, h: 1 });
+        img.src = src;
+      });
+    }
+
     async function doExportPDF(storeId) {
       const { jsPDF } = window.jspdf;
-      const targetStores = storeId
-        ? state.stores.filter(s => s.id === storeId)
-        : state.stores;
-
-      if (!targetStores.length) { toast('No hay tiendas para exportar', 'err'); return; }
+      if (!storeId) { toast('Selecciona una tienda primero', 'err'); return; }
+      const store = state.stores.find(s => s.id === storeId);
+      if (!store) { toast('Tienda no encontrada', 'err'); return; }
       toast('Generando PDF...', 'info');
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const PW = 210, PH = 297, M = 14;
       const BLUE = [79, 70, 229], PURPLE = [124, 58, 237], LIGHT = [238, 242, 255];
+      const USABLE_W = PW - M * 2;
       const date = new Date().toLocaleDateString('es-ES');
-      let firstPage = true;
 
-      for (const store of targetStores) {
-        if (!firstPage) doc.addPage();
-        firstPage = false;
+      // ── Store header bar ─────────────────────────────────────────
+      doc.setFillColor(...BLUE);
+      doc.roundedRect(M, 12, USABLE_W, 22, 3, 3, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(store.tienda, M + 5, 22);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`${store.cliente}  ·  ${store.pais || ''}  ·  ${date}`, M + 5, 29);
 
-        // ── Store header bar ─────────────────────────────────────────
-        doc.setFillColor(...BLUE);
-        doc.roundedRect(M, 12, PW - M * 2, 22, 3, 3, 'F');
-        doc.setTextColor(255, 255, 255);
+      let y = 42;
+      const boxes = state.ambientes[store.id] || [];
+      const storePhotos = state.photos[store.id] || {};
+
+      for (const box of boxes) {
+        const mats = (state.materials[store.id] || {})[box.id] || [];
+        const rawPhotos = storePhotos[box.id];
+        const photos = Array.isArray(rawPhotos) ? rawPhotos : (rawPhotos ? [rawPhotos] : []);
+        const MAX_IMG_H = 60; // mm max height per photo row
+        const GAP = 3;
+
+        // Pre-load photo dimensions to compute actual heights
+        const photoMetas = [];
+        for (const ph of photos.slice(0, 4)) {
+          const src = getPhotoSrc(ph);
+          const dims = await loadImgDims(src);
+          photoMetas.push({ src, dims, fmt: src.startsWith('data:image/png') ? 'PNG' : 'JPEG' });
+        }
+
+        // Calculate actual rendered height for each photo (fit inside MAX_IMG_H, respect ratio)
+        // Each photo gets equal width slot; height derived from aspect ratio, capped at MAX_IMG_H
+        const n = photoMetas.length;
+        let rowH = 0;
+        if (n > 0) {
+          const slotW = (USABLE_W - GAP * (n - 1)) / n;
+          photoMetas.forEach(pm => {
+            const ratio = pm.dims.h / pm.dims.w;
+            pm.renderW = slotW;
+            pm.renderH = Math.min(slotW * ratio, MAX_IMG_H);
+            rowH = Math.max(rowH, pm.renderH);
+          });
+        }
+
+        const tableH = mats.length > 0 ? Math.min(mats.length * 7 + 14, 80) : 10;
+        const blockH = 11 + (n > 0 ? rowH + 4 : 0) + tableH + 8;
+        if (y + blockH > PH - 16) { doc.addPage(); y = 16; }
+
+        // Ambient heading
+        doc.setFillColor(...LIGHT);
+        doc.roundedRect(M, y, USABLE_W, 9, 2, 2, 'F');
+        doc.setTextColor(...BLUE);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.text(store.tienda, M + 5, 22);
+        doc.setFontSize(10);
+        doc.text(box.name, M + 4, y + 6.2);
+        doc.setTextColor(100, 100, 100);
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.text(`${store.cliente}  ·  ${store.pais || ''}  ·  ${date}`, M + 5, 29);
+        doc.setFontSize(8);
+        doc.text(`${mats.length} material${mats.length !== 1 ? 'es' : ''}`, PW - M - 4, y + 6.2, { align: 'right' });
+        y += 11;
 
-        let y = 42;
+        // Photos strip — each image at correct aspect ratio, aligned to bottom of row
+        if (n > 0) {
+          photoMetas.forEach((pm, pi) => {
+            try {
+              const x = M + pi * (pm.renderW + GAP);
+              const imgY = y + (rowH - pm.renderH); // bottom-align
+              doc.addImage(pm.src, pm.fmt, x, imgY, pm.renderW, pm.renderH, '', 'MEDIUM');
+              doc.setDrawColor(210, 210, 220);
+              doc.setLineWidth(0.25);
+              doc.rect(x, imgY, pm.renderW, pm.renderH);
+            } catch (e) { /* skip bad image */ }
+          });
+          y += rowH + 4;
+        }
 
-        const boxes = state.ambientes[store.id] || [];
-        const storePhotos = state.photos[store.id] || {};
-
-        for (const box of boxes) {
-          const mats = (state.materials[store.id] || {})[box.id] || [];
-          const rawPhotos = storePhotos[box.id];
-          const photos = Array.isArray(rawPhotos) ? rawPhotos : (rawPhotos ? [rawPhotos] : []);
-
-          // Estimate height needed
-          const photoH = photos.length > 0 ? 52 : 0;
-          const tableH = mats.length > 0 ? Math.min(mats.length * 7 + 14, 80) : 10;
-          const blockH = 10 + photoH + tableH + 8;
-          if (y + blockH > PH - 16) { doc.addPage(); y = 16; }
-
-          // Ambient heading
-          doc.setFillColor(...LIGHT);
-          doc.roundedRect(M, y, PW - M * 2, 9, 2, 2, 'F');
-          doc.setTextColor(...BLUE);
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(10);
-          doc.text(box.name, M + 4, y + 6.2);
-          doc.setTextColor(100, 100, 100);
-          doc.setFont('helvetica', 'normal');
+        // Materials table
+        if (mats.length > 0) {
+          doc.autoTable({
+            startY: y,
+            margin: { left: M, right: M },
+            head: [['#', 'Código SAP', 'Ubicación', 'Estado']],
+            body: mats.map((m, i) => [i + 1, m.sapCode || '', m.location || '—', m.status || 'ACTIVO']),
+            styles: { fontSize: 8, cellPadding: 2.5, textColor: [30, 30, 30] },
+            headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+            alternateRowStyles: { fillColor: [248, 247, 255] },
+            columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 36 }, 2: { cellWidth: 40 }, 3: { cellWidth: 22 } },
+            tableLineColor: [220, 220, 230],
+            tableLineWidth: 0.2,
+          });
+          y = doc.lastAutoTable.finalY + 6;
+        } else {
+          doc.setTextColor(160, 160, 160);
+          doc.setFont('helvetica', 'italic');
           doc.setFontSize(8);
-          doc.text(`${mats.length} material${mats.length !== 1 ? 'es' : ''}`, PW - M - 4, y + 6.2, { align: 'right' });
-          y += 11;
-
-          // Photos strip (up to 4 side by side)
-          if (photos.length > 0) {
-            const maxPhotos = Math.min(photos.length, 4);
-            const imgW = (PW - M * 2 - (maxPhotos - 1) * 3) / maxPhotos;
-            const imgH = 46;
-            for (let pi = 0; pi < maxPhotos; pi++) {
-              try {
-                const src = getPhotoSrc(photos[pi]);
-                const fmt = src.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-                const x = M + pi * (imgW + 3);
-                doc.addImage(src, fmt, x, y, imgW, imgH, '', 'MEDIUM');
-                // rounded border effect
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.3);
-                doc.rect(x, y, imgW, imgH);
-              } catch (e) { /* skip bad image */ }
-            }
-            y += imgH + 4;
-          }
-
-          // Materials table
-          if (mats.length > 0) {
-            doc.autoTable({
-              startY: y,
-              margin: { left: M, right: M },
-              head: [['#', 'Código SAP', 'Ubicación', 'Estado']],
-              body: mats.map((m, i) => [
-                i + 1,
-                m.sapCode || '',
-                m.location || '—',
-                m.status || 'ACTIVO'
-              ]),
-              styles: { fontSize: 8, cellPadding: 2.5, textColor: [30, 30, 30] },
-              headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-              alternateRowStyles: { fillColor: [248, 247, 255] },
-              columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 36 }, 2: { cellWidth: 38 }, 3: { cellWidth: 24 } },
-              tableLineColor: [220, 220, 230],
-              tableLineWidth: 0.2,
-            });
-            y = doc.lastAutoTable.finalY + 6;
-          } else {
-            doc.setTextColor(150, 150, 150);
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(8);
-            doc.text('Sin materiales registrados', M + 4, y + 4);
-            y += 10;
-          }
-          y += 2;
+          doc.text('Sin materiales registrados', M + 4, y + 5);
+          y += 12;
         }
-
-        // Footer
-        const pageCount = doc.getNumberOfPages();
-        for (let p = 1; p <= pageCount; p++) {
-          doc.setPage(p);
-          doc.setDrawColor(200, 200, 210);
-          doc.setLineWidth(0.3);
-          doc.line(M, PH - 10, PW - M, PH - 10);
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7);
-          doc.setTextColor(150, 150, 150);
-          doc.text('Porcelanosa · Auditoría de Exposiciones', M, PH - 6);
-          doc.text(`${p} / ${pageCount}`, PW - M, PH - 6, { align: 'right' });
-        }
+        y += 2;
       }
 
-      const safeName = targetStores.length === 1
-        ? targetStores[0].tienda.replace(/[/\\?%*:|"<>]/g, '_')
-        : 'Global';
+      // Footer on every page
+      const pageCount = doc.getNumberOfPages();
+      for (let p = 1; p <= pageCount; p++) {
+        doc.setPage(p);
+        doc.setDrawColor(200, 200, 210);
+        doc.setLineWidth(0.3);
+        doc.line(M, PH - 10, PW - M, PH - 10);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Porcelanosa · Auditoría de Exposiciones', M, PH - 6);
+        doc.text(`${p} / ${pageCount}`, PW - M, PH - 6, { align: 'right' });
+      }
+
+      const safeName = store.tienda.replace(/[/\\?%*:|"<>]/g, '_');
       doc.save(`Auditoria_Porcelanosa_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`);
       toast('PDF generado con éxito');
     }

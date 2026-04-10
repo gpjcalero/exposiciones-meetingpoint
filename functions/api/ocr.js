@@ -30,17 +30,23 @@ Return ONLY a valid JSON array of strings. Example: ["100562400","100570014","10
 No explanation, only the JSON array. If none found, return: []`;
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://exposiciones-meetingpoint.pages.dev',
-      'X-Title': 'Porcelanosa Audit'
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.0-flash-exp:free',
-      max_tokens: 1024,
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+
+  let response;
+  try {
+    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://exposiciones-meetingpoint.pages.dev',
+        'X-Title': 'Porcelanosa Audit'
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-lite-001',
+        max_tokens: 1024,
       messages: [{
         role: 'user',
         content: [
@@ -54,8 +60,16 @@ No explanation, only the JSON array. If none found, return: []`;
           }
         ]
       }]
-    })
-  });
+      })
+    });
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      return Response.json({ sap_codes: [], error: 'OCR timeout: model took too long to respond' }, { status: 504 });
+    }
+    return Response.json({ sap_codes: [], error: 'Fetch error: ' + err.message }, { status: 500 });
+  }
+  clearTimeout(timeout);
 
   const responseText = await response.text();
 
