@@ -977,6 +977,7 @@
           </div>
           <div class="activity-dot ${dotClass}"></div>
           ${boxCount ? `<span class="pill">${boxCount} box</span>` : ''}
+          <button class="trash-btn" style="color:var(--blue);border-color:rgba(79,70,229,.2);background:var(--blue-bg)" onclick="event.stopPropagation();editStorePais('${s.id}')" title="Asignar país">🌍</button>
           <button class="trash-btn" onclick="event.stopPropagation();delStore('${s.id}')">${ICO.trash}</button>
           <span class="chevron">${ICO.chevR}</span>
         </div>`;
@@ -1028,6 +1029,38 @@
         delete state.ambientes[id]; delete state.materials[id];
         saveState(); renderStores(); toast('Tienda eliminada', 'info');
       });
+    }
+
+    function editStorePais(id) {
+      const store = state.stores.find(s => s.id === id);
+      if (!store) return;
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      overlay.innerHTML = `<div class="sheet">
+        <div class="sheet-handle"></div>
+        <h3 class="sheet-title">${store.tienda}</h3>
+        <p style="font-size:12px;color:var(--text3);margin:-12px 0 16px">${store.cliente}</p>
+        <div style="margin-bottom:14px">
+          <label class="label">País</label>
+          <input class="input" id="editPaisInput" value="${store.pais||''}" placeholder="Ej: Francia, Italia, Brasil" autofocus>
+        </div>
+        <button class="btn-primary" id="editPaisBtn">Guardar</button>
+      </div>`;
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+      $('editPaisBtn').onclick = async () => {
+        const pais = $('editPaisInput').value.trim();
+        store.pais = pais;
+        saveState();
+        overlay.remove();
+        renderStores();
+        toast('País actualizado');
+        fetch('/api/stores/update-pais', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, pais })
+        }).catch(console.error);
+      };
     }
 
     function showAddStore() {
@@ -1352,7 +1385,8 @@
       };
 
       state.materials[storeId][boxId].push(newMaterial);
-      state.logs.push({ storeId, boxId, sapCode, location, ts: Date.now() });
+      const _s = state.stores.find(s => s.id === storeId);
+      state.logs.push({ storeId, boxId, sapCode, location, ts: Date.now(), tienda: _s?.tienda || '', cliente: _s?.cliente || '' });
       saveState();
 
       try {
@@ -1530,11 +1564,13 @@
         ? `<div class="empty"><div class="empty-ico">${ICO.history}</div><p class="empty-text">Sin registros</p></div>`
         : [...state.logs].reverse().slice(0, 50).map((l, i) => {
           const store = state.stores.find(s => s.id === l.storeId);
+          const tienda = store?.tienda || l.tienda || '—';
+          const cliente = store?.cliente || l.cliente || tienda;
           return `<div class="card anim-up" style="animation-delay:${i * 25}ms;cursor:default">
           <div class="ico-box green">${ICO.check}</div>
           <div style="flex:1;min-width:0">
-            <div class="card-title">${l.sapCode}</div>
-            <div class="card-sub">${store?.cliente || store?.tienda || '?'} · ${store?.tienda || ''}</div>
+            <div class="card-title" style="font-size:13px">${l.sapCode}</div>
+            <div class="card-sub">${cliente} · ${tienda}</div>
           </div>
         </div>`;
         }).join('');
