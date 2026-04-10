@@ -4,6 +4,7 @@ export async function onRequestGet(context) {
   const queries = [
     `CREATE TABLE IF NOT EXISTS stores (
       id TEXT PRIMARY KEY,
+      pais TEXT,
       cod_sap TEXT,
       cliente TEXT,
       tienda TEXT,
@@ -39,6 +40,11 @@ export async function onRequestGet(context) {
   for (const q of queries) {
     await env.DB.prepare(q).run();
   }
+
+  // Migration: add pais column if missing
+  try {
+    await env.DB.prepare(`ALTER TABLE stores ADD COLUMN pais TEXT DEFAULT ''`).run();
+  } catch (e) { /* column already exists */ }
 
   return Response.json({ ok: true });
 }

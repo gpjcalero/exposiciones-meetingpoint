@@ -718,57 +718,57 @@
        REAL DATA FROM CSVs
        ══════════════════════════════════════════════════════════════════════ */
     const MASTER_STORES = [
-      { codSap: "1860698", cliente: "K International Distribution Ltd", tienda: "Abidjan", codigoCliente: "1860698", clienteDef: "K International Distribution Ltd", actividad: "Activo" },
-      { codSap: "174957", cliente: "Safin", tienda: "Bergamo", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1192309", cliente: "Mgt Diseño Sas", tienda: "Bogotá", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1222347", cliente: "Termosa Design Srl", tienda: "Cagliari", codigoCliente: "1222347", clienteDef: "Termosa Design Srl", actividad: "Activo" },
-      { codSap: "1222347", cliente: "Termosa Design Srl", tienda: "Sassari", codigoCliente: "1222347", clienteDef: "Termosa Design Srl", actividad: "Activo" },
-      { codSap: "1023594", cliente: "Fontile Calgary Corporation", tienda: "Calgary", codigoCliente: "1001700", clienteDef: "Fontile Corp", actividad: "Activo" },
-      { codSap: "151074", cliente: "M Luxury Sro", tienda: "Digital Park", codigoCliente: "1510740", clienteDef: "M Luxury Sro", actividad: "Activo" },
-      { codSap: "100648", cliente: "Espania Ceramic & Building Material", tienda: "Espania Ceramic & Building Material", codigoCliente: "1006480", clienteDef: "Espania Ceramic & Building Material", actividad: "Activo" },
-      { codSap: "1393359", cliente: "Baa Decord Sarlu", tienda: "Guinée", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "9023867", cliente: "I Sale Trading", tienda: "I Sale Trading", codigoCliente: "1061516", clienteDef: "I-Sale Trading", actividad: "Activo" },
-      { codSap: "1754222", cliente: "Arisaco Group Fzc", tienda: "Maputo", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1157488", cliente: "Carreaux D'Eau", tienda: "Metz", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1112766", cliente: "Assistance Maison Sarl", tienda: "Monaco", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1022754", cliente: "Nupami España Sl", tienda: "Myanmar", codigoCliente: "", clienteDef: "", actividad: "Preguntar Vicente Dejoz" },
-      { codSap: "1067517", cliente: "Sarl Camed", tienda: "Orán", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1112982", cliente: "Socadec Sarl", tienda: "Perpignan", codigoCliente: "1112982", clienteDef: "Socadec Sarl", actividad: "Activo" },
-      { codSap: "1001691", cliente: "Plaadipunk As", tienda: "Plaadipunk", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "1907955", cliente: "Ets Leon Steffes Sa", tienda: "Porcelanosa Luxemburgo", codigoCliente: "1907955", clienteDef: "Ets Leon Steffes Sa", actividad: "Activo" },
-      { codSap: "1604406", cliente: "Nosa Quimper", tienda: "Quimper", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "90238732", cliente: "Rb Emprendimientos Ltda", tienda: "Rb Emprendimientos Ltda", codigoCliente: "", clienteDef: "", actividad: "Preguntar Andrea Gomes" },
-      { codSap: "1228272", cliente: "Restructura Srl", tienda: "Restructura", codigoCliente: "1228272", clienteDef: "Restructura Srl", actividad: "Activo" },
-      { codSap: "1776027", cliente: "Nosa Saint Malo", tienda: "Saint Malo", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1846395", cliente: "Eurocer Srl", tienda: "San Jose", codigoCliente: "1846395", clienteDef: "Eurocer Srl", actividad: "Activo" },
-      { codSap: "1297968", cliente: "Maojun Enterprise Co Ltd", tienda: "Taichung (Taiwan)", codigoCliente: "1297968", clienteDef: "Maojun Enterprise Co Ltd", actividad: "" },
-      { codSap: "1640537", cliente: "Hogar Trading Co Ltd", tienda: "Taipei (Taiwan)", codigoCliente: "", clienteDef: "", actividad: "Activo" },
-      { codSap: "1817996", cliente: "Gateor Var", tienda: "Toulon", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1396474", cliente: "Decart Systems Llc", tienda: "Uzbekistán", codigoCliente: "1396474", clienteDef: "Decart Systems Llc", actividad: "Activo" },
-      { codSap: "1295429", cliente: "Cuisine Roche K", tienda: "Valence", codigoCliente: "", clienteDef: "", actividad: "No activo" },
-      { codSap: "1981422", cliente: "Vekren Sa", tienda: "Vekren S.A.", codigoCliente: "1981422", clienteDef: "Vekren Sa", actividad: "Activo" },
-      { codSap: "90242682", cliente: "Zanini Spa", tienda: "Zanini S.P.A", codigoCliente: "1379507", clienteDef: "Zanini S.P.A", actividad: "Activo" },
-      { codSap: "90213036", cliente: "Porcelanosa Brasil / Andrea", tienda: "Brasil", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "1757583", cliente: "Salvador Javier Ferrando Roda", tienda: "Brisban", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Idea Nuova", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Sassari (Termosa)", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "100252", cliente: "Yoshimoto Trading Co Ltd", tienda: "Japón", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "1187681", cliente: "Societe Generale Du Siege (Sgs)", tienda: "Meaux", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "2091583", cliente: "Imporcela Sa", tienda: "Porcelanosa Buenos Aires", codigoCliente: "2091583", clienteDef: "Imporcela Sa", actividad: "" },
-      { codSap: "1609907", cliente: "Flise Bent A/S", tienda: "Copenhague", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Ediltacconi S.R.L.", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Giorni Home", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Gruppo Arkell", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Primo Colombo", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Scarpis S.R.L.", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "10017", cliente: "Fontile Corp", tienda: "Fontile Distributors", codigoCliente: "1001700", clienteDef: "Fontile Corp", actividad: "" },
-      { codSap: "1003814", cliente: "Porcebras Revestimentos Ltda", tienda: "Porcebras", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "100151", cliente: "Porcelanosa Spa", tienda: "Prato Armando Srl (Preferente Liguria)", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "1001691", cliente: "Plaadipunk As", tienda: "Tallinn", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Sin Marmolista Referente", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Bianco67", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "La Quattro Marmi E Graniti", codigoCliente: "", clienteDef: "", actividad: "" },
-      { codSap: "9011239", cliente: "Xtone Italia", tienda: "Martelli Marmi Srl", codigoCliente: "", clienteDef: "", actividad: "" },
+      { pais:"Costa de Marfil", codSap:"1860698", cliente:"K International Distribution Ltd", tienda:"Abidjan", codigoCliente:"1860698", clienteDef:"K International Distribution Ltd", actividad:"Activo" },
+      { pais:"Italia", codSap:"174957", cliente:"Safin", tienda:"Bergamo", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Colombia", codSap:"1192309", cliente:"Mgt Diseño Sas", tienda:"Bogotá", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Italia", codSap:"1222347", cliente:"Termosa Design Srl", tienda:"Cagliari", codigoCliente:"1222347", clienteDef:"Termosa Design Srl", actividad:"Activo" },
+      { pais:"Italia", codSap:"1222347", cliente:"Termosa Design Srl", tienda:"Sassari", codigoCliente:"1222347", clienteDef:"Termosa Design Srl", actividad:"Activo" },
+      { pais:"Canadá", codSap:"1023594", cliente:"Fontile Calgary Corporation", tienda:"Calgary", codigoCliente:"1001700", clienteDef:"Fontile Corp", actividad:"Activo" },
+      { pais:"Eslovaquia", codSap:"151074", cliente:"M Luxury Sro", tienda:"Digital Park", codigoCliente:"1510740", clienteDef:"M Luxury Sro", actividad:"Activo" },
+      { pais:"EAU", codSap:"100648", cliente:"Espania Ceramic & Building Material", tienda:"Espania Ceramic & Building Material", codigoCliente:"1006480", clienteDef:"Espania Ceramic & Building Material", actividad:"Activo" },
+      { pais:"Guinea", codSap:"1393359", cliente:"Baa Decord Sarlu", tienda:"Guinée", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"EAU", codSap:"9023867", cliente:"I Sale Trading", tienda:"I Sale Trading", codigoCliente:"1061516", clienteDef:"I-Sale Trading", actividad:"Activo" },
+      { pais:"Mozambique", codSap:"1754222", cliente:"Arisaco Group Fzc", tienda:"Maputo", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Francia", codSap:"1157488", cliente:"Carreaux D'Eau", tienda:"Metz", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Mónaco", codSap:"1112766", cliente:"Assistance Maison Sarl", tienda:"Monaco", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Myanmar", codSap:"1022754", cliente:"Nupami España Sl", tienda:"Myanmar", codigoCliente:"", clienteDef:"", actividad:"Preguntar Vicente Dejoz" },
+      { pais:"Argelia", codSap:"1067517", cliente:"Sarl Camed", tienda:"Orán", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Francia", codSap:"1112982", cliente:"Socadec Sarl", tienda:"Perpignan", codigoCliente:"1112982", clienteDef:"Socadec Sarl", actividad:"Activo" },
+      { pais:"Estonia", codSap:"1001691", cliente:"Plaadipunk As", tienda:"Plaadipunk", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Luxemburgo", codSap:"1907955", cliente:"Ets Leon Steffes Sa", tienda:"Porcelanosa Luxemburgo", codigoCliente:"1907955", clienteDef:"Ets Leon Steffes Sa", actividad:"Activo" },
+      { pais:"Francia", codSap:"1604406", cliente:"Nosa Quimper", tienda:"Quimper", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Uruguay", codSap:"90238732", cliente:"Rb Emprendimientos Ltda", tienda:"Rb Emprendimientos Ltda", codigoCliente:"", clienteDef:"", actividad:"Preguntar Andrea Gomes" },
+      { pais:"Italia", codSap:"1228272", cliente:"Restructura Srl", tienda:"Restructura", codigoCliente:"1228272", clienteDef:"Restructura Srl", actividad:"Activo" },
+      { pais:"Francia", codSap:"1776027", cliente:"Nosa Saint Malo", tienda:"Saint Malo", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Italia", codSap:"1846395", cliente:"Eurocer Srl", tienda:"San Jose", codigoCliente:"1846395", clienteDef:"Eurocer Srl", actividad:"Activo" },
+      { pais:"Taiwan", codSap:"1297968", cliente:"Maojun Enterprise Co Ltd", tienda:"Taichung (Taiwan)", codigoCliente:"1297968", clienteDef:"Maojun Enterprise Co Ltd", actividad:"" },
+      { pais:"Taiwan", codSap:"1640537", cliente:"Hogar Trading Co Ltd", tienda:"Taipei (Taiwan)", codigoCliente:"", clienteDef:"", actividad:"Activo" },
+      { pais:"Francia", codSap:"1817996", cliente:"Gateor Var", tienda:"Toulon", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"Uzbekistán", codSap:"1396474", cliente:"Decart Systems Llc", tienda:"Uzbekistán", codigoCliente:"1396474", clienteDef:"Decart Systems Llc", actividad:"Activo" },
+      { pais:"Francia", codSap:"1295429", cliente:"Cuisine Roche K", tienda:"Valence", codigoCliente:"", clienteDef:"", actividad:"No activo" },
+      { pais:"España", codSap:"1981422", cliente:"Vekren Sa", tienda:"Vekren S.A.", codigoCliente:"1981422", clienteDef:"Vekren Sa", actividad:"Activo" },
+      { pais:"Italia", codSap:"90242682", cliente:"Zanini Spa", tienda:"Zanini S.P.A", codigoCliente:"1379507", clienteDef:"Zanini S.P.A", actividad:"Activo" },
+      { pais:"Brasil", codSap:"90213036", cliente:"Porcelanosa Brasil / Andrea", tienda:"Brasil", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Australia", codSap:"1757583", cliente:"Salvador Javier Ferrando Roda", tienda:"Brisban", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Idea Nuova", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Sassari (Termosa)", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Japón", codSap:"100252", cliente:"Yoshimoto Trading Co Ltd", tienda:"Japón", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Francia", codSap:"1187681", cliente:"Societe Generale Du Siege (Sgs)", tienda:"Meaux", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Argentina", codSap:"2091583", cliente:"Imporcela Sa", tienda:"Porcelanosa Buenos Aires", codigoCliente:"2091583", clienteDef:"Imporcela Sa", actividad:"" },
+      { pais:"Dinamarca", codSap:"1609907", cliente:"Flise Bent A/S", tienda:"Copenhague", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Ediltacconi S.R.L.", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Giorni Home", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Gruppo Arkell", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Primo Colombo", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Scarpis S.R.L.", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Canadá", codSap:"10017", cliente:"Fontile Corp", tienda:"Fontile Distributors", codigoCliente:"1001700", clienteDef:"Fontile Corp", actividad:"" },
+      { pais:"Brasil", codSap:"1003814", cliente:"Porcebras Revestimentos Ltda", tienda:"Porcebras", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"100151", cliente:"Porcelanosa Spa", tienda:"Prato Armando Srl (Preferente Liguria)", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Estonia", codSap:"1001691", cliente:"Plaadipunk As", tienda:"Tallinn", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Sin Marmolista Referente", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Bianco67", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"La Quattro Marmi E Graniti", codigoCliente:"", clienteDef:"", actividad:"" },
+      { pais:"Italia", codSap:"9011239", cliente:"Xtone Italia", tienda:"Martelli Marmi Srl", codigoCliente:"", clienteDef:"", actividad:"" },
     ];
 
     const LOCATIONS = ["MUR", "SOL", "ROBINETTERIE", "CUISINE", "MEUBLE", "DOUCHE", "ACCESSOIRES", "DRESSING", "COLONNE", "COLONNES", "TERASSE", "BAIGNOIRE", "WC", "PRESENTOIR", "CADRES", "RECEVEUR", "LAVABOS", "ROCIADORES", "CANAPÉ", "ROLL PAPIER PEINT", "REV", "PAV", "PDTE"];
@@ -806,7 +806,7 @@
           const stores = await storesRes.json();
           if (stores.length) {
             state.stores = stores.map(s => ({
-              id: s.id, codSap: s.cod_sap, cliente: s.cliente, tienda: s.tienda,
+              id: s.id, pais: s.pais || '', codSap: s.cod_sap, cliente: s.cliente, tienda: s.tienda,
               codigoCliente: s.codigo_cliente, clienteDef: s.cliente_def, actividad: s.actividad
             }));
           }
@@ -954,18 +954,26 @@
     }
 
     /* ── STORES ─────────────────────────────────────────────────────── */
+    let _fPais = '', _fCliente = '';
+
     function renderStores() {
-      const html = state.stores.length === 0
-        ? `<div class="empty"><div class="empty-ico">${ICO.store}</div><p class="empty-text">Sin tiendas</p></div>`
-        : state.stores.map((s, i) => {
+      const stores = getFilteredStores();
+
+      const allPaises = [...new Set(state.stores.map(s => s.pais || '').filter(Boolean))].sort();
+      const paisStores = _fPais ? state.stores.filter(s => s.pais === _fPais) : state.stores;
+      const allClientes = [...new Set(paisStores.map(s => s.cliente).filter(Boolean))].sort();
+
+      const html = stores.length === 0
+        ? `<div class="empty"><div class="empty-ico">${ICO.store}</div><p class="empty-text">Sin resultados</p></div>`
+        : stores.map((s, i) => {
           const act = s.actividad || '';
           const dotClass = act === 'Activo' ? 'active' : (act.startsWith('No') ? 'inactive' : 'unknown');
           const boxCount = (state.ambientes[s.id] || []).length;
-          return `<div class="card anim-up" style="animation-delay:${i * 30}ms" onclick="go('boxes',{selStore:'${s.id}'})">
-          <div class="avatar">${s.cliente[0]}</div>
+          return `<div class="card anim-up" style="animation-delay:${i * 20}ms" onclick="go('boxes',{selStore:'${s.id}'})">
+          <div class="avatar">${(s.cliente[0]||'?')}</div>
           <div style="flex:1;min-width:0">
             <div class="card-title">${s.cliente}</div>
-            <div class="card-sub">${ICO.pin} ${s.tienda} · ${ICO.tag} ${s.codSap}</div>
+            <div class="card-sub">${ICO.pin} ${s.tienda}${s.pais ? ' · '+s.pais : ''}</div>
           </div>
           <div class="activity-dot ${dotClass}"></div>
           ${boxCount ? `<span class="pill">${boxCount} box</span>` : ''}
@@ -977,36 +985,41 @@
       app().innerHTML = `<div class="anim-in">
     <div class="topbar">
       <button class="back-btn" onclick="go('home')">${ICO.chevL}</button>
-      <div style="flex:1;min-width:0"><h1>Tiendas</h1><p class="sub">${state.stores.length} en el maestro</p></div>
+      <div style="flex:1;min-width:0"><h1>Tiendas</h1><p class="sub">${stores.length} mostradas</p></div>
     </div>
-    <div style="padding:10px 18px 0">
-      <div class="search-wrap">${ICO.search}<input class="input" id="storeSearch" placeholder="Buscar cliente, tienda o SAP..." oninput="filterStores()"></div>
+    <div style="padding:10px 16px 0;display:flex;flex-direction:column;gap:8px">
+      <div style="position:relative">
+        <select id="selPais" onchange="_fPais=this.value;_fCliente='';renderStores()"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--white);font-family:inherit;font-size:13px;font-weight:600;color:var(--text);appearance:none;-webkit-appearance:none;cursor:pointer">
+          <option value="">🌍 Todos los países</option>
+          ${allPaises.map(p => `<option value="${p}" ${_fPais===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3)">${ICO.chevR}</span>
+      </div>
+      <div style="position:relative">
+        <select id="selCliente" onchange="_fCliente=this.value;renderStores()"
+          style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--white);font-family:inherit;font-size:13px;font-weight:600;color:var(--text);appearance:none;-webkit-appearance:none;cursor:pointer">
+          <option value="">🏢 Todos los clientes</option>
+          ${allClientes.map(c => `<option value="${c}" ${_fCliente===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3)">${ICO.chevR}</span>
+      </div>
+      <div class="search-wrap" style="margin-bottom:4px">${ICO.search}<input class="input" id="storeSearch" placeholder="Buscar tienda..." oninput="renderStores()" style="padding-left:36px"></div>
     </div>
-    <div class="list" id="storeList">${html}</div>
+    <div class="list" id="storeList" style="padding-top:8px">${html}</div>
     <button class="fab" onclick="showAddStore()">${ICO.plus}</button>
   </div>`;
     }
 
-    function filterStores() {
-      const q = $('storeSearch').value.toLowerCase();
-      const list = $('storeList');
-      const filtered = q.length < 2 ? state.stores : state.stores.filter(s =>
-        s.cliente.toLowerCase().includes(q) || s.tienda.toLowerCase().includes(q) || s.codSap.includes(q)
+    function getFilteredStores() {
+      let stores = state.stores;
+      if (_fPais) stores = stores.filter(s => s.pais === _fPais);
+      if (_fCliente) stores = stores.filter(s => s.cliente === _fCliente);
+      const q = (document.getElementById('storeSearch')?.value || '').toLowerCase();
+      if (q.length >= 1) stores = stores.filter(s =>
+        s.cliente.toLowerCase().includes(q) || s.tienda.toLowerCase().includes(q) || (s.pais||'').toLowerCase().includes(q) || s.codSap.includes(q)
       );
-      list.innerHTML = filtered.length === 0
-        ? `<div class="empty"><p class="empty-text">Sin resultados</p></div>`
-        : filtered.map((s, i) => {
-          const dotClass = (s.actividad || '') === 'Activo' ? 'active' : ((s.actividad || '').startsWith('No') ? 'inactive' : 'unknown');
-          const boxCount = (state.ambientes[s.id] || []).length;
-          return `<div class="card" onclick="go('boxes',{selStore:'${s.id}'})">
-          <div class="avatar">${s.cliente[0]}</div>
-          <div style="flex:1;min-width:0"><div class="card-title">${s.cliente}</div><div class="card-sub">${ICO.pin} ${s.tienda} · ${ICO.tag} ${s.codSap}</div></div>
-          <div class="activity-dot ${dotClass}"></div>
-          ${boxCount ? `<span class="pill">${boxCount} box</span>` : ''}
-          <button class="trash-btn" onclick="event.stopPropagation();delStore('${s.id}')">${ICO.trash}</button>
-          <span class="chevron">${ICO.chevR}</span>
-        </div>`;
-        }).join('');
+      return stores;
     }
 
     function delStore(id) {
@@ -1019,6 +1032,7 @@
 
     function showAddStore() {
       showModal('Nueva Tienda', [
+        { label: 'País', ph: 'Ej: Francia, Italia, Brasil' },
         { label: 'Cliente', ph: 'Nombre del cliente' },
         { label: 'Tienda', ph: 'Nombre/ciudad' },
         { label: 'Cod. SAP', ph: 'Código SAP' },
@@ -1027,11 +1041,12 @@
 
         const newStore = {
           id,
-          codSap: vals[2],
-          cliente: vals[0],
-          tienda: vals[1],
-          codigoCliente: vals[2],
-          clienteDef: vals[0],
+          pais: vals[0],
+          codSap: vals[3],
+          cliente: vals[1],
+          tienda: vals[2],
+          codigoCliente: vals[3],
+          clienteDef: vals[1],
           actividad: 'Activo'
         };
 
@@ -1046,11 +1061,12 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id,
-              cod_sap: vals[2],
-              cliente: vals[0],
-              tienda: vals[1],
-              codigo_cliente: vals[2],
-              cliente_def: vals[0],
+              pais: vals[0],
+              cod_sap: vals[3],
+              cliente: vals[1],
+              tienda: vals[2],
+              codigo_cliente: vals[3],
+              cliente_def: vals[1],
               actividad: 'Activo'
             })
           });
@@ -1518,7 +1534,7 @@
           <div class="ico-box green">${ICO.check}</div>
           <div style="flex:1;min-width:0">
             <div class="card-title">${l.sapCode}</div>
-            <div class="card-sub">${store?.tienda || '?'} · ${l.location || ''} · ${new Date(l.ts).toLocaleString('es-ES')}</div>
+            <div class="card-sub">${store?.cliente || store?.tienda || '?'} · ${store?.tienda || ''}</div>
           </div>
         </div>`;
         }).join('');

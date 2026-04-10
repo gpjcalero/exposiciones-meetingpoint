@@ -39,7 +39,7 @@ No explanation, only the JSON array. If none found, return: []`;
       'X-Title': 'Porcelanosa Audit'
     },
     body: JSON.stringify({
-      model: 'openai/gpt-4o-mini',
+      model: 'google/gemini-2.0-flash-exp:free',
       max_tokens: 1024,
       messages: [{
         role: 'user',

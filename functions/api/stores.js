@@ -12,10 +12,11 @@ export async function onRequestPost(context) {
   const body = await request.json();
 
   await env.DB.prepare(`
-    INSERT INTO stores (id, cod_sap, cliente, tienda, codigo_cliente, cliente_def, actividad)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO stores (id, pais, cod_sap, cliente, tienda, codigo_cliente, cliente_def, actividad)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.id,
+    body.pais || "",
     body.cod_sap || "",
     body.cliente || "",
     body.tienda || "",
