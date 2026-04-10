@@ -1075,20 +1075,29 @@
         : boxes.map((b, i) => {
           const mats = (state.materials[store.id] || {})[b.id] || [];
           const hasMats = mats.length > 0;
-          const photo = (state.photos[store.id] || {})[b.id] || null;
+          const rawPhotos = (state.photos[store.id] || {})[b.id];
+          const photos = Array.isArray(rawPhotos) ? rawPhotos : (rawPhotos ? [rawPhotos] : []);
           return `<div class="card anim-up" style="animation-delay:${i * 30}ms;flex-direction:column;align-items:stretch;padding:0;overflow:hidden" onclick="go('materials',{selBox:'${b.id}'})">
-          ${photo ? `<img src="${photo}" style="width:100%;height:160px;object-fit:cover;display:block">` : ''}
+          ${photos.length > 0 ? `
+            <div style="display:flex;gap:8px;overflow-x:auto;padding:12px 12px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+              ${photos.map((p, pi) => `
+                <div style="position:relative;flex-shrink:0">
+                  <img src="${p}" style="width:130px;height:95px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block">
+                  <button onclick="event.stopPropagation();delAmbientPhoto('${store.id}','${b.id}',${pi})"
+                    style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+                </div>`).join('')}
+            </div>` : ''}
           <div style="display:flex;align-items:center;gap:12px;padding:14px 14px 0">
             <div class="ico-box ${hasMats ? 'green' : 'yellow'}">${hasMats ? ICO.check : ICO.box}</div>
             <div style="flex:1;min-width:0">
               <div class="card-title">${b.name}</div>
-              <div class="card-sub">${hasMats ? `<span style="color:var(--green);font-weight:700">${mats.length} materiales</span>` : `<span style="color:var(--yellow)">Sin materiales</span>`}</div>
+              <div class="card-sub">${hasMats ? `<span style="color:var(--green);font-weight:700">${mats.length} mat.</span>` : `<span style="color:var(--yellow)">Sin materiales</span>`}${photos.length > 0 ? `<span style="color:var(--text4);margin-left:6px">${ICO.camera} ${photos.length} foto${photos.length > 1 ? 's' : ''}</span>` : ''}</div>
             </div>
             <span class="chevron">${ICO.chevR}</span>
           </div>
           <div style="display:flex;gap:8px;padding:10px 14px 14px">
             <button class="scan-btn" style="flex:1;justify-content:center" onclick="event.stopPropagation();go('audit',{selBox:'${b.id}'})">${ICO.scan} Escanear</button>
-            <button class="photo-btn" style="flex:1;justify-content:center;margin-top:0" onclick="event.stopPropagation();document.getElementById('ambPhoto_${b.id}').click()">${ICO.camera} ${photo ? 'Cambiar foto' : 'Foto ambiente'}</button>
+            <button class="photo-btn" style="flex:1;justify-content:center;margin-top:0" onclick="event.stopPropagation();document.getElementById('ambPhoto_${b.id}').click()">${ICO.camera} Añadir foto</button>
             <button class="trash-btn" onclick="event.stopPropagation();delBox('${b.id}')">${ICO.trash}</button>
           </div>
           <input type="file" id="ambPhoto_${b.id}" accept="image/*" capture="environment" style="display:none" onchange="handleAmbientPhoto(this,'${store.id}','${b.id}')">
@@ -1119,33 +1128,77 @@
     function showAddBox() {
       const store = state.stores.find(s => s.id === state.selStore);
 
-      showModal('Nuevo Ambiente', [{ label: 'Nombre', ph: 'Ej: BOX 1, COULOIR, HALL' }], async vals => {
-        const newBox = { id: 'bx_' + Date.now(), name: vals[0] };
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      overlay.innerHTML = `<div class="sheet">
+        <div class="sheet-handle"></div>
+        <h3 class="sheet-title">Nuevo Ambiente</h3>
+        <div style="margin-bottom:12px">
+          <label class="label">Nombre del ambiente</label>
+          <input class="input" id="boxNameInput" placeholder="Ej: BOX 1, COULOIR, HALL" autofocus>
+        </div>
+        <button class="btn-secondary" id="scanLabelBtn" style="margin-bottom:12px;width:100%;justify-content:center;display:flex;align-items:center;gap:8px">
+          ${ICO.camera} Fotografiar etiqueta para detectar nombre
+        </button>
+        <input type="file" id="labelScanInput" accept="image/*" capture="environment" style="display:none">
+        <button class="btn-primary" id="boxSaveBtn">Guardar</button>
+      </div>`;
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
 
+      $('scanLabelBtn').onclick = () => $('labelScanInput').click();
+      $('labelScanInput').onchange = async function() {
+        const file = this.files?.[0];
+        if (!file) return;
+        $('scanLabelBtn').textContent = 'Analizando...';
+        $('scanLabelBtn').disabled = true;
+        const reader = new FileReader();
+        reader.onload = async ev => {
+          const base64 = ev.target.result.split(',')[1];
+          try {
+            const res = await fetch('/api/ocr', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image_base64: base64, mime_type: file.type, mode: 'name' })
+            });
+            const data = await res.json();
+            if (data.name) {
+              $('boxNameInput').value = data.name;
+              toast('Nombre detectado: ' + data.name);
+            } else {
+              toast('No se detectó nombre, escríbelo manualmente', 'info');
+            }
+          } catch (e) {
+            toast('Error al analizar la etiqueta', 'err');
+          }
+          $('scanLabelBtn').innerHTML = `${ICO.camera} Volver a fotografiar`;
+          $('scanLabelBtn').disabled = false;
+        };
+        reader.readAsDataURL(file);
+      };
+
+      $('boxSaveBtn').onclick = async () => {
+        const name = $('boxNameInput').value.trim();
+        if (!name) { toast('Escribe un nombre para el ambiente', 'err'); return; }
+        overlay.remove();
+        const newBox = { id: 'bx_' + Date.now(), name };
         if (!state.ambientes[store.id]) state.ambientes[store.id] = [];
         state.ambientes[store.id].push(newBox);
-
         saveState();
         renderBoxes();
         toast('Ambiente añadido');
-
         try {
           const res = await fetch('/api/boxes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: newBox.id,
-              store_id: store.id,
-              name: newBox.name
-            })
+            body: JSON.stringify({ id: newBox.id, store_id: store.id, name: newBox.name })
           });
-
           if (!res.ok) throw new Error('No se pudo guardar el ambiente en D1');
         } catch (err) {
           console.error(err);
           toast('Guardado local, pero falló D1', 'err');
         }
-      });
+      };
     }
 
     function handleAmbientPhoto(input, storeId, boxId) {
@@ -1163,14 +1216,30 @@
           canvas.getContext('2d').drawImage(img, 0, 0, w, h);
           const data = canvas.toDataURL('image/jpeg', 0.82);
           if (!state.photos[storeId]) state.photos[storeId] = {};
-          state.photos[storeId][boxId] = data;
+          const cur = state.photos[storeId][boxId];
+          if (Array.isArray(cur)) {
+            cur.push(data);
+          } else if (cur) {
+            state.photos[storeId][boxId] = [cur, data]; // migrate old single value
+          } else {
+            state.photos[storeId][boxId] = [data];
+          }
           saveState();
           renderBoxes();
-          toast('Foto de ambiente guardada');
+          toast('Foto añadida');
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
+    }
+
+    function delAmbientPhoto(storeId, boxId, idx) {
+      const arr = state.photos[storeId]?.[boxId];
+      if (!Array.isArray(arr)) return;
+      arr.splice(idx, 1);
+      saveState();
+      renderBoxes();
+      toast('Foto eliminada', 'info');
     }
 
     /* ── MATERIALS LIST ───────────────────────────────────────────── */
@@ -1462,13 +1531,17 @@
         const storePhotos = state.photos[store.id] || {};
         const boxes = state.ambientes[store.id] || [];
         for (const box of boxes) {
-          const photoData = storePhotos[box.id];
-          if (!photoData) continue;
-          const base64 = photoData.split(',')[1];
-          const ext = photoData.startsWith('data:image/png') ? 'png' : 'jpg';
+          const raw = storePhotos[box.id];
+          if (!raw) continue;
+          const arr = Array.isArray(raw) ? raw : [raw];
           const safeName = `${store.tienda} - ${box.name}`.replace(/[/\\?%*:|"<>]/g, '_');
-          zip.file(`${safeName}.${ext}`, base64, { base64: true });
-          count++;
+          arr.forEach((photoData, pi) => {
+            const base64 = photoData.split(',')[1];
+            const ext = photoData.startsWith('data:image/png') ? 'png' : 'jpg';
+            const filename = arr.length > 1 ? `${safeName} (${pi + 1}).${ext}` : `${safeName}.${ext}`;
+            zip.file(filename, base64, { base64: true });
+            count++;
+          });
         }
       }
       if (count === 0) { toast('No hay fotos de ambientes guardadas', 'err'); return; }
