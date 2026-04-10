@@ -9,6 +9,8 @@
     rel="stylesheet">
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <style>
     :root {
       --bg: #F2F4F7;
@@ -712,6 +714,7 @@
       pin: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
       tag: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>`,
       upload: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+      pdf: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>`,
     };
 
     /* ══════════════════════════════════════════════════════════════════════
@@ -936,6 +939,10 @@
 
         <button onclick="doExport()" style="width:100%;margin-top:14px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
           ${ICO.export} Exportar Auditoría (.xlsx)
+        </button>
+
+        <button onclick="doExportPDF()" style="width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#4F46E5,#7C3AED);border:none;color:#fff;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(79,70,229,.3)">
+          ${ICO.pdf} Exportar Informe Visual (.pdf)
         </button>
 
         <button onclick="importCSV()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -1173,6 +1180,7 @@
     <div class="topbar">
       <button class="back-btn" onclick="go('stores')">${ICO.chevL}</button>
       <div style="flex:1;min-width:0"><h1>${store.tienda}</h1><p class="sub">${store.cliente} · ${boxes.length} ambientes</p></div>
+      <button onclick="doExportPDF('${store.id}')" title="Exportar PDF" style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:8px;display:flex;align-items:center;cursor:pointer;color:var(--blue);box-shadow:0 1px 2px rgba(0,0,0,.05)">${ICO.pdf}</button>
       <button onclick="downloadPhotosZip('${store.id}')" title="Descargar fotos" style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:8px;display:flex;align-items:center;cursor:pointer;color:var(--text2);box-shadow:0 1px 2px rgba(0,0,0,.05)">${ICO.camera}</button>
     </div>
     <div class="list">${html}</div>
@@ -1649,6 +1657,138 @@
       a.download = `Fotos_${store?.tienda || 'Ambientes'}_${new Date().toISOString().split('T')[0]}.zip`;
       a.click();
       toast(`${count} foto${count > 1 ? 's' : ''} descargada${count > 1 ? 's' : ''}`);
+    }
+
+    /* ── EXPORT PDF ────────────────────────────────────────────────── */
+    async function doExportPDF(storeId) {
+      const { jsPDF } = window.jspdf;
+      const targetStores = storeId
+        ? state.stores.filter(s => s.id === storeId)
+        : state.stores;
+
+      if (!targetStores.length) { toast('No hay tiendas para exportar', 'err'); return; }
+      toast('Generando PDF...', 'info');
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const PW = 210, PH = 297, M = 14;
+      const BLUE = [79, 70, 229], PURPLE = [124, 58, 237], LIGHT = [238, 242, 255];
+      const date = new Date().toLocaleDateString('es-ES');
+      let firstPage = true;
+
+      for (const store of targetStores) {
+        if (!firstPage) doc.addPage();
+        firstPage = false;
+
+        // ── Store header bar ─────────────────────────────────────────
+        doc.setFillColor(...BLUE);
+        doc.roundedRect(M, 12, PW - M * 2, 22, 3, 3, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text(store.tienda, M + 5, 22);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`${store.cliente}  ·  ${store.pais || ''}  ·  ${date}`, M + 5, 29);
+
+        let y = 42;
+
+        const boxes = state.ambientes[store.id] || [];
+        const storePhotos = state.photos[store.id] || {};
+
+        for (const box of boxes) {
+          const mats = (state.materials[store.id] || {})[box.id] || [];
+          const rawPhotos = storePhotos[box.id];
+          const photos = Array.isArray(rawPhotos) ? rawPhotos : (rawPhotos ? [rawPhotos] : []);
+
+          // Estimate height needed
+          const photoH = photos.length > 0 ? 52 : 0;
+          const tableH = mats.length > 0 ? Math.min(mats.length * 7 + 14, 80) : 10;
+          const blockH = 10 + photoH + tableH + 8;
+          if (y + blockH > PH - 16) { doc.addPage(); y = 16; }
+
+          // Ambient heading
+          doc.setFillColor(...LIGHT);
+          doc.roundedRect(M, y, PW - M * 2, 9, 2, 2, 'F');
+          doc.setTextColor(...BLUE);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.text(box.name, M + 4, y + 6.2);
+          doc.setTextColor(100, 100, 100);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.text(`${mats.length} material${mats.length !== 1 ? 'es' : ''}`, PW - M - 4, y + 6.2, { align: 'right' });
+          y += 11;
+
+          // Photos strip (up to 4 side by side)
+          if (photos.length > 0) {
+            const maxPhotos = Math.min(photos.length, 4);
+            const imgW = (PW - M * 2 - (maxPhotos - 1) * 3) / maxPhotos;
+            const imgH = 46;
+            for (let pi = 0; pi < maxPhotos; pi++) {
+              try {
+                const src = getPhotoSrc(photos[pi]);
+                const fmt = src.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+                const x = M + pi * (imgW + 3);
+                doc.addImage(src, fmt, x, y, imgW, imgH, '', 'MEDIUM');
+                // rounded border effect
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.3);
+                doc.rect(x, y, imgW, imgH);
+              } catch (e) { /* skip bad image */ }
+            }
+            y += imgH + 4;
+          }
+
+          // Materials table
+          if (mats.length > 0) {
+            doc.autoTable({
+              startY: y,
+              margin: { left: M, right: M },
+              head: [['#', 'Código SAP', 'Ubicación', 'Estado']],
+              body: mats.map((m, i) => [
+                i + 1,
+                m.sapCode || '',
+                m.location || '—',
+                m.status || 'ACTIVO'
+              ]),
+              styles: { fontSize: 8, cellPadding: 2.5, textColor: [30, 30, 30] },
+              headStyles: { fillColor: PURPLE, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+              alternateRowStyles: { fillColor: [248, 247, 255] },
+              columnStyles: { 0: { cellWidth: 8 }, 1: { cellWidth: 36 }, 2: { cellWidth: 38 }, 3: { cellWidth: 24 } },
+              tableLineColor: [220, 220, 230],
+              tableLineWidth: 0.2,
+            });
+            y = doc.lastAutoTable.finalY + 6;
+          } else {
+            doc.setTextColor(150, 150, 150);
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(8);
+            doc.text('Sin materiales registrados', M + 4, y + 4);
+            y += 10;
+          }
+          y += 2;
+        }
+
+        // Footer
+        const pageCount = doc.getNumberOfPages();
+        for (let p = 1; p <= pageCount; p++) {
+          doc.setPage(p);
+          doc.setDrawColor(200, 200, 210);
+          doc.setLineWidth(0.3);
+          doc.line(M, PH - 10, PW - M, PH - 10);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          doc.text('Porcelanosa · Auditoría de Exposiciones', M, PH - 6);
+          doc.text(`${p} / ${pageCount}`, PW - M, PH - 6, { align: 'right' });
+        }
+      }
+
+      const safeName = targetStores.length === 1
+        ? targetStores[0].tienda.replace(/[/\\?%*:|"<>]/g, '_')
+        : 'Global';
+      doc.save(`Auditoria_Porcelanosa_${safeName}_${new Date().toISOString().split('T')[0]}.pdf`);
+      toast('PDF generado con éxito');
     }
 
     /* ── IMPORT CSV ───────────────────────────────────────────────── */
