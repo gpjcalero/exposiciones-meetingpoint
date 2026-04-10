@@ -7,6 +7,8 @@
   <title>Porcelanosa · Auditoría Showrooms</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     :root {
       --bg: #F2F4F7;
@@ -933,7 +935,11 @@
         </div>
 
         <button onclick="doExport()" style="width:100%;margin-top:14px;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
-          ${ICO.export} Exportar Auditoría (.csv)
+          ${ICO.export} Exportar Auditoría (.xlsx)
+        </button>
+
+        <button onclick="downloadPhotosZip()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+          ${ICO.camera} Descargar fotos ambientes (.zip)
         </button>
 
         <button onclick="importCSV()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -1069,15 +1075,23 @@
         : boxes.map((b, i) => {
           const mats = (state.materials[store.id] || {})[b.id] || [];
           const hasMats = mats.length > 0;
-          return `<div class="card anim-up" style="animation-delay:${i * 30}ms" onclick="go('materials',{selBox:'${b.id}'})">
-          <div class="ico-box ${hasMats ? 'green' : 'yellow'}">${hasMats ? ICO.check : ICO.box}</div>
-          <div style="flex:1;min-width:0">
-            <div class="card-title">${b.name}</div>
-            <div class="card-sub">${hasMats ? `<span style="color:var(--green);font-weight:600">${mats.length} materiales</span>` : `<span style="color:var(--yellow)">Sin materiales</span>`}</div>
+          const photo = (state.photos[store.id] || {})[b.id] || null;
+          return `<div class="card anim-up" style="animation-delay:${i * 30}ms;flex-direction:column;align-items:stretch;padding:0;overflow:hidden" onclick="go('materials',{selBox:'${b.id}'})">
+          ${photo ? `<img src="${photo}" style="width:100%;height:160px;object-fit:cover;display:block">` : ''}
+          <div style="display:flex;align-items:center;gap:12px;padding:14px 14px 0">
+            <div class="ico-box ${hasMats ? 'green' : 'yellow'}">${hasMats ? ICO.check : ICO.box}</div>
+            <div style="flex:1;min-width:0">
+              <div class="card-title">${b.name}</div>
+              <div class="card-sub">${hasMats ? `<span style="color:var(--green);font-weight:700">${mats.length} materiales</span>` : `<span style="color:var(--yellow)">Sin materiales</span>`}</div>
+            </div>
+            <span class="chevron">${ICO.chevR}</span>
           </div>
-          <button class="scan-btn" onclick="event.stopPropagation();go('audit',{selBox:'${b.id}'})">${ICO.scan} Escanear</button>
-          <button class="trash-btn" onclick="event.stopPropagation();delBox('${b.id}')">${ICO.trash}</button>
-          <span class="chevron">${ICO.chevR}</span>
+          <div style="display:flex;gap:8px;padding:10px 14px 14px">
+            <button class="scan-btn" style="flex:1;justify-content:center" onclick="event.stopPropagation();go('audit',{selBox:'${b.id}'})">${ICO.scan} Escanear</button>
+            <button class="photo-btn" style="flex:1;justify-content:center;margin-top:0" onclick="event.stopPropagation();document.getElementById('ambPhoto_${b.id}').click()">${ICO.camera} ${photo ? 'Cambiar foto' : 'Foto ambiente'}</button>
+            <button class="trash-btn" onclick="event.stopPropagation();delBox('${b.id}')">${ICO.trash}</button>
+          </div>
+          <input type="file" id="ambPhoto_${b.id}" accept="image/*" capture="environment" style="display:none" onchange="handleAmbientPhoto(this,'${store.id}','${b.id}')">
         </div>`;
         }).join('');
 
@@ -1132,6 +1146,31 @@
           toast('Guardado local, pero falló D1', 'err');
         }
       });
+    }
+
+    function handleAmbientPhoto(input, storeId, boxId) {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          const data = canvas.toDataURL('image/jpeg', 0.82);
+          if (!state.photos[storeId]) state.photos[storeId] = {};
+          state.photos[storeId][boxId] = data;
+          saveState();
+          renderBoxes();
+          toast('Foto de ambiente guardada');
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
     }
 
     /* ── MATERIALS LIST ───────────────────────────────────────────── */
@@ -1230,7 +1269,9 @@
       }
     }
 
-    /* ── AUDIT (Camera/OCR) ──────────────────────────────────────── */
+    /* ── AUDIT (Camera/OCR multi-material) ───────────────────────── */
+    const LOCS = ['MUR', 'SOL', 'ROBINETTERIE', 'CUISINE', 'MEUBLE', 'DOUCHE', 'WC', 'TERASSE', 'PRESENTOIR'];
+
     function renderAudit() {
       const store = state.stores.find(s => s.id === state.selStore);
       const box = (state.ambientes[store?.id] || []).find(b => b.id === state.selBox);
@@ -1239,82 +1280,123 @@
       app().innerHTML = `<div class="anim-in">
     <div class="topbar">
       <button class="back-btn" onclick="go('materials')">${ICO.chevL}</button>
-      <div style="flex:1;min-width:0"><h1>Escanear Etiqueta</h1><p class="sub">${box.name} · ${store.tienda}</p></div>
+      <div style="flex:1;min-width:0"><h1>Escanear Materiales</h1><p class="sub">${box.name} · ${store.tienda}</p></div>
     </div>
     <div class="list">
-      <div class="capture-zone" onclick="$('fileInput').click()">
-        <div style="width:60px;height:60px;border-radius:16px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--text4)">${ICO.camera}</div>
-        <p style="font-size:14px;font-weight:600;color:var(--text3)">Pulsa para capturar</p>
-        <p style="font-size:11px;color:var(--border2);margin-top:4px">Fotografía la etiqueta del material</p>
+      <div class="capture-zone" id="captureZone" onclick="$('fileInput').click()">
+        <div style="width:64px;height:64px;border-radius:18px;background:var(--blue-bg);border:1px solid rgba(79,70,229,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--blue)">${ICO.camera}</div>
+        <p style="font-size:15px;font-weight:700;color:var(--text)">Fotografiar etiquetas</p>
+        <p style="font-size:12px;color:var(--text3);margin-top:6px">La IA detectará todos los códigos SAP de la imagen</p>
       </div>
       <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="handleCapture(this)">
-
-      <p style="font-size:10px;color:var(--text4);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin:22px 0 8px">O añadir manualmente</p>
-
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div><label class="label">Código SAP</label><input class="input" id="auditSap" placeholder="Ej: 100336896"></div>
-        <div><label class="label">Ubicación</label>
-          <div class="chips" id="locChips">
-            ${['MUR', 'SOL', 'ROBINETTERIE', 'CUISINE', 'MEUBLE', 'DOUCHE', 'WC', 'TERASSE', 'PRESENTOIR'].map(l => `<button class="chip" onclick="pickLoc(this,'${l}')">${l}</button>`).join('')}
-          </div>
-          <input class="input" id="auditLoc" placeholder="O escribe otra..." style="margin-top:6px">
-        </div>
-        <div><label class="label">Estado</label>
-          <div class="chips">
-            <button class="chip chip-status active-green active" id="st-ACTIVO" onclick="pickStatus('ACTIVO')">ACTIVO</button>
-            <button class="chip chip-status" id="st-NO_TARIFA" onclick="pickStatus('NO TARIFA')">NO TARIFA</button>
-            <button class="chip chip-status" id="st-OBSOLETO" onclick="pickStatus('OBSOLETO')">OBSOLETO</button>
-          </div>
-        </div>
-        <div><label class="label">Notas</label><textarea class="input" id="auditNotes" rows="2" placeholder="Observaciones..."></textarea></div>
-        <button class="btn-primary" onclick="saveAudit()">Guardar Material</button>
+      <div id="auditItems" style="display:flex;flex-direction:column;gap:12px;"></div>
+      <button class="btn-secondary" id="btnAddManual" onclick="addManualAuditItem()" style="margin-top:4px">+ Añadir código manualmente</button>
+      <div id="saveAllWrapper" style="display:none;margin-top:4px">
+        <button class="btn-primary" onclick="saveAllAudit()">${ICO.check} Guardar todos los materiales</button>
       </div>
     </div>
   </div>`;
-      state._auditStatus = 'ACTIVO';
-      state._auditLoc = '';
+      state._auditItems = [];
     }
 
-    function pickLoc(el, loc) {
-      document.querySelectorAll('#locChips .chip').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
-      state._auditLoc = loc;
-      $('auditLoc').value = '';
+    function addManualAuditItem(sap = '') {
+      state._auditItems = state._auditItems || [];
+      state._auditItems.push({ id: 'ai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), sap, loc: '' });
+      renderAuditItems();
+      const cz = $('captureZone');
+      if (cz) cz.style.display = 'none';
     }
 
-    function pickStatus(st) {
-      state._auditStatus = st;
-      ['ACTIVO', 'NO_TARIFA', 'OBSOLETO'].forEach(s => {
-        const el = $('st-' + s);
-        if (!el) return;
-        el.classList.remove('active', 'active-green', 'active-yellow', 'active-red');
-        if (st.replace(/ /g, '_') === s) {
-          el.classList.add('active');
-          if (s === 'ACTIVO') el.classList.add('active-green');
-          if (s === 'NO_TARIFA') el.classList.add('active-yellow');
-          if (s === 'OBSOLETO') el.classList.add('active-red');
-        }
-      });
+    function renderAuditItems() {
+      const container = $('auditItems');
+      if (!container) return;
+      container.innerHTML = (state._auditItems || []).map((item, idx) => `
+        <div class="card" style="flex-direction:column;align-items:stretch;padding:14px;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Material #${idx + 1}</span>
+            <button class="trash-btn" onclick="removeAuditItem('${item.id}')">${ICO.trash}</button>
+          </div>
+          <div>
+            <label class="label">Código SAP</label>
+            <input class="input" value="${item.sap}" placeholder="Ej: 100336896"
+              oninput="updateAuditItem('${item.id}','sap',this.value)">
+          </div>
+          <div>
+            <label class="label">Ubicación</label>
+            <div class="chips" style="gap:6px;flex-wrap:wrap">
+              ${LOCS.map(l => `<button class="chip ${item.loc === l ? 'active' : ''}" style="padding:6px 10px;font-size:11px"
+                onclick="updateAuditItem('${item.id}','loc','${l}');renderAuditItems()">${l}</button>`).join('')}
+            </div>
+          </div>
+        </div>
+      `).join('');
+      const sw = $('saveAllWrapper');
+      if (sw) sw.style.display = (state._auditItems || []).length > 0 ? 'block' : 'none';
     }
 
-    function handleCapture(input) {
+    function updateAuditItem(id, field, value) {
+      const item = (state._auditItems || []).find(i => i.id === id);
+      if (item) item[field] = value;
+    }
+
+    function removeAuditItem(id) {
+      state._auditItems = (state._auditItems || []).filter(i => i.id !== id);
+      renderAuditItems();
+      if (!(state._auditItems || []).length) {
+        const cz = $('captureZone');
+        if (cz) cz.style.display = '';
+      }
+    }
+
+    async function handleCapture(input) {
       const file = input.files?.[0];
       if (!file) return;
-      // Simulate OCR - in production would call Gemini API
-      toast('Imagen capturada · OCR simulado');
-      const fakeSap = '10033' + Math.floor(Math.random() * 9000 + 1000);
-      $('auditSap').value = fakeSap;
+      toast('Analizando imagen con IA...', 'info');
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const base64 = ev.target.result.split(',')[1];
+        const mimeType = file.type || 'image/jpeg';
+        try {
+          const res = await fetch('/api/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_base64: base64, mime_type: mimeType })
+          });
+          if (!res.ok) throw new Error('OCR error ' + res.status);
+          const data = await res.json();
+          const codes = data.sap_codes || [];
+          if (codes.length === 0) {
+            toast('No se detectaron códigos. Añade manualmente.', 'info');
+          } else {
+            const cz = $('captureZone');
+            if (cz) cz.style.display = 'none';
+            codes.forEach(sap => addManualAuditItem(String(sap)));
+            toast(`${codes.length} código${codes.length > 1 ? 's' : ''} detectado${codes.length > 1 ? 's' : ''}`);
+          }
+        } catch (err) {
+          console.error(err);
+          toast('Error en el análisis. Añade manualmente.', 'err');
+        }
+        input.value = '';
+      };
+      reader.readAsDataURL(file);
     }
 
-    function saveAudit() {
-      const sap = $('auditSap').value.trim();
-      if (!sap) { toast('Introduce un código SAP', 'err'); return; }
-      const loc = state._auditLoc || $('auditLoc').value.trim().toUpperCase();
-      const notes = $('auditNotes').value.trim();
+    function saveAllAudit() {
       const store = state.stores.find(s => s.id === state.selStore);
-      addMaterial(store.id, state.selBox, sap, loc, notes, state._auditStatus);
-      toast('Material guardado');
-      go('materials');
+      let saved = 0;
+      for (const item of (state._auditItems || [])) {
+        const sap = item.sap.trim();
+        if (!sap) continue;
+        addMaterial(store.id, state.selBox, sap, item.loc || 'SIN_UBICACION', '', 'ACTIVO');
+        saved++;
+      }
+      if (saved > 0) {
+        toast(`${saved} material${saved > 1 ? 'es' : ''} guardado${saved > 1 ? 's' : ''}`);
+        go('materials');
+      } else {
+        toast('Añade al menos un código SAP válido', 'err');
+      }
     }
 
     /* ── LOGS ──────────────────────────────────────────────────────── */
@@ -1365,12 +1447,38 @@
         }
       }
       if (!rows.length) { toast('Sin materiales para exportar', 'err'); return; }
-      const headers = Object.keys(rows[0]);
-      const csv = [headers.join(';'), ...rows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(';'))].join('\n');
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `Auditoria_Porcelanosa_${new Date().toISOString().split('T')[0]}.csv`; a.click();
-      toast('Exportado correctamente');
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Auditoría');
+      XLSX.writeFile(wb, `Auditoria_Porcelanosa_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast('Excel exportado correctamente');
+    }
+
+    /* ── EXPORT PHOTOS ZIP ─────────────────────────────────────────── */
+    async function downloadPhotosZip() {
+      const zip = new JSZip();
+      let count = 0;
+      for (const store of state.stores) {
+        const storePhotos = state.photos[store.id] || {};
+        const boxes = state.ambientes[store.id] || [];
+        for (const box of boxes) {
+          const photoData = storePhotos[box.id];
+          if (!photoData) continue;
+          const base64 = photoData.split(',')[1];
+          const ext = photoData.startsWith('data:image/png') ? 'png' : 'jpg';
+          const safeName = `${store.tienda} - ${box.name}`.replace(/[/\\?%*:|"<>]/g, '_');
+          zip.file(`${safeName}.${ext}`, base64, { base64: true });
+          count++;
+        }
+      }
+      if (count === 0) { toast('No hay fotos de ambientes guardadas', 'err'); return; }
+      toast('Generando ZIP...', 'info');
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Fotos_Ambientes_Porcelanosa_${new Date().toISOString().split('T')[0]}.zip`;
+      a.click();
+      toast(`${count} foto${count > 1 ? 's' : ''} descargada${count > 1 ? 's' : ''}`);
     }
 
     /* ── IMPORT CSV ───────────────────────────────────────────────── */
