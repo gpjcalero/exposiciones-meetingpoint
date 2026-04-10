@@ -808,10 +808,15 @@
         if (storesRes && storesRes.ok) {
           const stores = await storesRes.json();
           if (stores.length) {
-            state.stores = stores.map(s => ({
-              id: s.id, pais: s.pais || '', codSap: s.cod_sap, cliente: s.cliente, tienda: s.tienda,
-              codigoCliente: s.codigo_cliente, clienteDef: s.cliente_def, actividad: s.actividad
-            }));
+            state.stores = stores.map(s => {
+              // If DB has no pais, fall back to MASTER_STORES by codSap+tienda
+              const master = MASTER_STORES.find(m => m.codSap === s.cod_sap && m.tienda === s.tienda);
+              return {
+                id: s.id, pais: s.pais || master?.pais || '', codSap: s.cod_sap,
+                cliente: s.cliente, tienda: s.tienda,
+                codigoCliente: s.codigo_cliente, clienteDef: s.cliente_def, actividad: s.actividad
+              };
+            });
           }
         }
         if (boxesRes && boxesRes.ok) {
@@ -971,18 +976,25 @@
         : stores.map((s, i) => {
           const act = s.actividad || '';
           const dotClass = act === 'Activo' ? 'active' : (act.startsWith('No') ? 'inactive' : 'unknown');
+          const dotColor = act === 'Activo' ? 'var(--green)' : (act.startsWith('No') ? 'var(--red)' : 'var(--text4)');
           const boxCount = (state.ambientes[s.id] || []).length;
-          return `<div class="card anim-up" style="animation-delay:${i * 20}ms" onclick="go('boxes',{selStore:'${s.id}'})">
-          <div class="avatar">${(s.cliente[0]||'?')}</div>
-          <div style="flex:1;min-width:0">
-            <div class="card-title">${s.cliente}</div>
-            <div class="card-sub">${ICO.pin} ${s.tienda}${s.pais ? ' · '+s.pais : ''}</div>
+          return `<div class="card anim-up" style="animation-delay:${i*20}ms;flex-direction:column;align-items:stretch;padding:14px 16px 10px;gap:0;cursor:pointer" onclick="go('boxes',{selStore:'${s.id}'})">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:5px"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:800;color:var(--text);line-height:1.3;word-break:break-word">${s.tienda}</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px;font-weight:500;word-break:break-word">${s.cliente}</div>
+              ${s.pais ? `<span style="display:inline-block;margin-top:5px;font-size:10px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:2px 8px;border-radius:20px">${s.pais}</span>` : ''}
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0">
+              <span style="color:var(--text4);display:flex">${ICO.chevR}</span>
+              ${boxCount ? `<span class="pill" style="font-size:10px">${boxCount} amb</span>` : ''}
+            </div>
           </div>
-          <div class="activity-dot ${dotClass}"></div>
-          ${boxCount ? `<span class="pill">${boxCount} box</span>` : ''}
-          <button class="trash-btn" style="color:var(--blue);border-color:rgba(79,70,229,.2);background:var(--blue-bg)" onclick="event.stopPropagation();editStorePais('${s.id}')" title="Asignar país">🌍</button>
-          <button class="trash-btn" onclick="event.stopPropagation();delStore('${s.id}')">${ICO.trash}</button>
-          <span class="chevron">${ICO.chevR}</span>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+            <button style="flex:1;padding:6px 10px;border-radius:8px;background:var(--blue-bg);border:1px solid rgba(79,70,229,.15);color:var(--blue);font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="event.stopPropagation();editStorePais('${s.id}')">🌍 ${s.pais || 'Asignar país'}</button>
+            <button class="trash-btn" onclick="event.stopPropagation();delStore('${s.id}')">${ICO.trash}</button>
+          </div>
         </div>`;
         }).join('');
 
