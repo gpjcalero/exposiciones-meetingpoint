@@ -941,6 +941,9 @@
         <button onclick="importCSV()" style="width:100%;padding:14px;border-radius:12px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
           ${ICO.upload} Importar plantilla materiales (.csv)
         </button>
+        <p style="font-size:11px;color:var(--text4);text-align:center;margin-top:-4px;padding:0 8px">
+          Formato CSV con separador <strong>;</strong>: <code>NombreAmbiente;CodigoSAP;Fecha;Ubicacion</code>
+        </p>
 
         <button onclick="resetAll()" style="width:100%;padding:10px;border-radius:10px;background:transparent;border:1px solid #18181b;color:var(--border2);font-size:11px;font-family:inherit;cursor:pointer">
           Restaurar datos maestro
@@ -1060,10 +1063,27 @@
       });
     }
 
+    function getPhotoSrc(p) { return typeof p === 'string' ? p : p.data; }
+    function getPhotoDbId(p) { return (typeof p === 'object' && p) ? p.dbId : null; }
+
     /* ── BOXES (Ambientes) ────────────────────────────────────────── */
-    function renderBoxes() {
+    async function renderBoxes() {
       const store = state.stores.find(s => s.id === state.selStore);
       if (!store) { go('stores'); return; }
+
+      // Sync photos from DB (authoritative source for cross-device)
+      try {
+        const res = await fetch(`/api/photos?store_id=${store.id}`).catch(() => null);
+        if (res?.ok) {
+          const dbPhotos = await res.json();
+          state.photos[store.id] = {};
+          for (const p of dbPhotos) {
+            if (!state.photos[store.id][p.box_id]) state.photos[store.id][p.box_id] = [];
+            state.photos[store.id][p.box_id].push({ dbId: p.id, data: p.photo_data });
+          }
+        }
+      } catch (e) { /* offline, use localStorage cache */ }
+
       const boxes = state.ambientes[store.id] || [];
 
       const html = boxes.length === 0
@@ -1078,8 +1098,8 @@
             <div style="display:flex;gap:8px;overflow-x:auto;padding:12px 12px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch">
               ${photos.map((p, pi) => `
                 <div style="position:relative;flex-shrink:0">
-                  <img src="${p}" style="width:130px;height:95px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block">
-                  <button onclick="event.stopPropagation();delAmbientPhoto('${store.id}','${b.id}',${pi})"
+                  <img src="${getPhotoSrc(p)}" style="width:130px;height:95px;object-fit:cover;border-radius:10px;border:1px solid var(--border);display:block">
+                  <button onclick="event.stopPropagation();delAmbientPhoto('${store.id}','${b.id}',${pi},'${getPhotoDbId(p) || ''}')"
                     style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
                 </div>`).join('')}
             </div>` : ''}
@@ -1096,7 +1116,7 @@
             <button class="photo-btn" style="flex:1;justify-content:center;margin-top:0" onclick="event.stopPropagation();document.getElementById('ambPhoto_${b.id}').click()">${ICO.camera} Añadir foto</button>
             <button class="trash-btn" onclick="event.stopPropagation();delBox('${b.id}')">${ICO.trash}</button>
           </div>
-          <input type="file" id="ambPhoto_${b.id}" accept="image/*" capture="environment" style="display:none" onchange="handleAmbientPhoto(this,'${store.id}','${b.id}')">
+          <input type="file" id="ambPhoto_${b.id}" accept="image/*" style="display:none" onchange="handleAmbientPhoto(this,'${store.id}','${b.id}')">
         </div>`;
         }).join('');
 
@@ -1208,31 +1228,41 @@
           canvas.width = w; canvas.height = h;
           canvas.getContext('2d').drawImage(img, 0, 0, w, h);
           const data = canvas.toDataURL('image/jpeg', 0.82);
+          const dbId = 'ph_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
           if (!state.photos[storeId]) state.photos[storeId] = {};
           const cur = state.photos[storeId][boxId];
+          const newPhoto = { dbId, data };
           if (Array.isArray(cur)) {
-            cur.push(data);
+            cur.push(newPhoto);
           } else if (cur) {
-            state.photos[storeId][boxId] = [cur, data]; // migrate old single value
+            state.photos[storeId][boxId] = [typeof cur === 'string' ? { dbId: null, data: cur } : cur, newPhoto];
           } else {
-            state.photos[storeId][boxId] = [data];
+            state.photos[storeId][boxId] = [newPhoto];
           }
           saveState();
           renderBoxes();
           toast('Foto añadida');
+          fetch('/api/photos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: dbId, store_id: storeId, box_id: boxId, photo_data: data })
+          }).catch(console.error);
         };
         img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     }
 
-    function delAmbientPhoto(storeId, boxId, idx) {
+    function delAmbientPhoto(storeId, boxId, idx, dbId) {
       const arr = state.photos[storeId]?.[boxId];
       if (!Array.isArray(arr)) return;
       arr.splice(idx, 1);
       saveState();
       renderBoxes();
       toast('Foto eliminada', 'info');
+      if (dbId) {
+        fetch(`/api/photos?id=${dbId}`, { method: 'DELETE' }).catch(console.error);
+      }
     }
 
     /* ── MATERIALS LIST ───────────────────────────────────────────── */
@@ -1442,8 +1472,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image_base64: base64, mime_type: 'image/jpeg' })
         });
-        if (!res.ok) throw new Error('OCR error ' + res.status);
         const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'OCR error ' + res.status);
         const codes = data.sap_codes || [];
         if (codes.length === 0) {
           toast('No se detectaron códigos. Añade manualmente.', 'info');
@@ -1455,7 +1485,8 @@
         }
       } catch (err) {
         console.error(err);
-        toast('Error en el análisis. Añade manualmente.', 'err');
+        const msg = err?.message || String(err);
+        toast('Error OCR: ' + msg.slice(0, 60), 'err');
       }
       input.value = '';
     }
@@ -1547,7 +1578,8 @@
           if (!raw) continue;
           const arr = Array.isArray(raw) ? raw : [raw];
           const safeName = `${box.name}`.replace(/[/\\?%*:|"<>]/g, '_');
-          arr.forEach((photoData, pi) => {
+          arr.forEach((photoItem, pi) => {
+            const photoData = getPhotoSrc(photoItem);
             const base64 = photoData.split(',')[1];
             const ext = photoData.startsWith('data:image/png') ? 'png' : 'jpg';
             const filename = arr.length > 1 ? `${safeName} (${pi + 1}).${ext}` : `${safeName}.${ext}`;
